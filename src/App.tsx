@@ -13,6 +13,7 @@ import {
   LocationAutocompleteInput,
   SelectedLocationData,
 } from './components/LocationAutocompleteInput';
+import { calculateHaversineKm } from './utils/optimizer';
 
 const StrategyRoom3D = React.lazy(() =>
   import('./components/StrategyRoom3D').then((mod) => ({ default: mod.StrategyRoom3D }))
@@ -32,6 +33,8 @@ import {
   Database,
   BrainCircuit,
   X,
+  UserCheck,
+  Navigation,
 } from 'lucide-react';
 
 type ActiveTab = 'dispatcher' | 'strategy3d' | 'schema' | 'advisory';
@@ -63,6 +66,7 @@ export default function App() {
   // Filters for Left Dispatcher Panel
   const [tempFilter, setTempFilter] = useState<TemperatureCapacity | 'All'>('All');
   const [priorityFilter, setPriorityFilter] = useState<TaskPriority | 'All'>('All');
+  const [courierFilter, setCourierFilter] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedTaskOrderId, setSelectedTaskOrderId] = useState<string | null>(null);
 
@@ -299,8 +303,40 @@ export default function App() {
       !q ||
       task.orderId.toLowerCase().includes(q) ||
       task.facilityName.toLowerCase().includes(q) ||
-      task.specimenType.toLowerCase().includes(q);
-    return matchesTemp && matchesPriority && matchesSearch;
+      task.specimenType.toLowerCase().includes(q) ||
+      (task.address && task.address.toLowerCase().includes(q));
+
+    let matchesCourier = true;
+    if (courierFilter === 'NEAR_GPS') {
+      if (userLocation) {
+        const d = calculateHaversineKm(
+          userLocation.lat,
+          userLocation.lng,
+          task.lat,
+          task.lng
+        );
+        matchesCourier = d <= 35; // within 35 km of user's detected GPS area
+      }
+    } else if (courierFilter !== 'All') {
+      if (task.assignedVehicleId) {
+        matchesCourier = task.assignedVehicleId === courierFilter;
+      } else {
+        const veh = vehicles.find((v) => v.id === courierFilter);
+        if (veh) {
+          const d = calculateHaversineKm(
+            veh.currentLat,
+            veh.currentLng,
+            task.lat,
+            task.lng
+          );
+          const withinRadius = d <= (veh.maxRadiusKm || 50);
+          const tempMatch = task.requiredTemp === veh.temperatureCapacity;
+          matchesCourier = withinRadius && tempMatch;
+        }
+      }
+    }
+
+    return matchesTemp && matchesPriority && matchesSearch && matchesCourier;
   });
 
   const pendingCount = tasks.filter((t) => t.status === 'Pending').length;
@@ -489,36 +525,141 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Active Fleet Cold-Chain Capacity Bar */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
+              {/* Active Fleet Cold-Chain Capacity Bar with Interactive Courier Filter */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 pt-1">
                 {vehicles.map((veh) => {
                   const cluster = clusters.find((c) => c.vehicleId === veh.id);
                   const stopCount = cluster ? cluster.stops.length : 0;
+                  const isSelected = courierFilter === veh.id;
                   return (
                     <div
                       key={veh.id}
-                      className="p-3 rounded-lg border border-slate-200 bg-slate-50/60 flex flex-col justify-between"
+                      onClick={() => setCourierFilter(isSelected ? 'All' : veh.id)}
+                      className={`p-2.5 rounded-lg border transition-all cursor-pointer flex flex-col justify-between ${
+                        isSelected
+                          ? 'border-blue-600 bg-blue-50/90 shadow-2xs ring-1 ring-blue-600'
+                          : 'border-slate-200 bg-slate-50/60 hover:bg-white hover:border-slate-300'
+                      }`}
+                      title={`Click to view only orders for ${veh.name} (${veh.operatingZone || 'Zone'})`}
                     >
                       <div className="flex items-center justify-between text-xs">
-                        <span className="font-mono font-semibold text-slate-900">
-                          {veh.id}
+                        <span className="font-mono font-bold text-slate-900 flex items-center gap-1.5">
+                          <span
+                            className="w-2 h-2 rounded-full inline-block shrink-0"
+                            style={{ backgroundColor: veh.routeColor }}
+                          />
+                          <span className="truncate">{veh.id}</span>
                         </span>
-                        <span className="font-mono text-slate-500 tabular-nums">
-                          {stopCount}/{veh.maxStops} stops
+                        <span className="font-mono text-slate-500 tabular-nums text-[10px]">
+                          {stopCount}/{veh.maxStops}
                         </span>
                       </div>
-                      <div className="text-xs font-semibold text-slate-800 mt-1 truncate">
-                        {veh.name}
+                      <div className="text-[11px] font-semibold text-slate-800 mt-1 truncate">
+                        {veh.driverName.split(' ')[0]} ({veh.operatingZone?.split(' ')[0] || 'Zone'})
                       </div>
-                      <div className="text-[11px] text-slate-500 mt-0.5 flex items-center gap-1.5">
-                        <span>{veh.temperatureCapacity}</span>
-                        <span aria-hidden="true">·</span>
-                        <span className="font-mono">{veh.tempRangeLabel}</span>
+                      <div className="text-[10px] text-slate-500 mt-1 flex items-center justify-between">
+                        <span className="truncate">{veh.temperatureCapacity}</span>
+                        <span
+                          className={`text-[9px] font-mono px-1 py-0.2 rounded font-semibold ${
+                            isSelected
+                              ? 'bg-blue-600 text-white'
+                              : 'text-slate-400'
+                          }`}
+                        >
+                          {isSelected ? 'ACTIVE' : 'FILTER'}
+                        </span>
                       </div>
                     </div>
                   );
                 })}
               </div>
+
+              {/* Courier Territory View Selector Bar */}
+              <div className="flex flex-wrap items-center justify-between gap-2 p-2 bg-slate-100/80 border border-slate-200 rounded-lg text-xs">
+                <div className="flex items-center gap-1.5 font-medium text-slate-700">
+                  <Truck className="w-3.5 h-3.5 text-blue-600" />
+                  <span>Courier Manifest:</span>
+                </div>
+                <div className="flex items-center gap-1 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={() => setCourierFilter('All')}
+                    className={`px-2.5 py-1 rounded text-xs font-medium transition-colors cursor-pointer ${
+                      courierFilter === 'All'
+                        ? 'bg-blue-600 text-white font-semibold shadow-2xs'
+                        : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200'
+                    }`}
+                  >
+                    Statewide Fleet ({tasks.length})
+                  </button>
+                  {vehicles.map((v) => (
+                    <button
+                      key={v.id}
+                      type="button"
+                      onClick={() => setCourierFilter(courierFilter === v.id ? 'All' : v.id)}
+                      className={`px-2 py-1 rounded text-[11px] font-medium transition-colors cursor-pointer flex items-center gap-1 ${
+                        courierFilter === v.id
+                          ? 'bg-blue-600 text-white font-semibold shadow-2xs'
+                          : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200'
+                      }`}
+                    >
+                      <span
+                        className="w-1.5 h-1.5 rounded-full"
+                        style={{ backgroundColor: v.routeColor }}
+                      />
+                      <span>{v.id}</span>
+                    </button>
+                  ))}
+                  {userLocation && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setCourierFilter(courierFilter === 'NEAR_GPS' ? 'All' : 'NEAR_GPS')
+                      }
+                      className={`px-2.5 py-1 rounded text-[11px] font-medium transition-colors cursor-pointer flex items-center gap-1 ${
+                        courierFilter === 'NEAR_GPS'
+                          ? 'bg-emerald-600 text-white font-semibold shadow-2xs'
+                          : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200'
+                      }`}
+                    >
+                      <Navigation className="w-3 h-3" />
+                      <span>Near My GPS (&lt;35km)</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Active Territory Banner when courier filter is selected */}
+              {courierFilter !== 'All' && (
+                <div className="p-2.5 rounded-lg bg-blue-50 border border-blue-200 text-blue-900 text-xs flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <UserCheck className="w-4 h-4 text-blue-600 shrink-0" />
+                    <div>
+                      {courierFilter === 'NEAR_GPS' ? (
+                        <span>
+                          <b>GPS Vicinity View</b>: Showing orders within 35 km of your location ({userLocation?.name}).
+                        </span>
+                      ) : (
+                        (() => {
+                          const v = vehicles.find((veh) => veh.id === courierFilter);
+                          return (
+                            <span>
+                              <b>Courier Route Manifest</b>: Showing only orders for <b>{v?.driverName}</b> ({v?.id}) in <b>{v?.operatingZone}</b> (Radius: {v?.maxRadiusKm} km). Orders in other Tamil Nadu regions are filtered out.
+                            </span>
+                          );
+                        })()
+                      )}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setCourierFilter('All')}
+                    className="text-blue-700 hover:text-blue-950 underline font-medium text-[11px] whitespace-nowrap cursor-pointer"
+                  >
+                    Show All
+                  </button>
+                </div>
+              )}
 
               {/* Filter Controls: Specimen Temperature Constraints & Search */}
               <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
@@ -634,6 +775,7 @@ export default function App() {
                     onClick={() => {
                       setTempFilter('All');
                       setPriorityFilter('All');
+                      setCourierFilter('All');
                       setSearchQuery('');
                     }}
                     className="px-3.5 py-1.5 text-xs font-medium text-blue-600 hover:text-blue-800 underline cursor-pointer"
@@ -712,9 +854,25 @@ export default function App() {
                             <span aria-hidden="true" className="text-slate-300">
                               ·
                             </span>
-                            <span className="font-mono text-[11px] text-slate-400 tabular-nums">
-                              {task.lat.toFixed(4)}°N, {Math.abs(task.lng).toFixed(4)}°W
+                            <span className="font-mono text-[11px] text-slate-500 tabular-nums">
+                              {task.lat.toFixed(4)}°N, {task.lng.toFixed(4)}°E
                             </span>
+                            {userLocation && (
+                              <>
+                                <span aria-hidden="true" className="text-slate-300">
+                                  ·
+                                </span>
+                                <span className="text-[11px] font-mono text-blue-600 font-medium">
+                                  {calculateHaversineKm(
+                                    userLocation.lat,
+                                    userLocation.lng,
+                                    task.lat,
+                                    task.lng
+                                  )}{' '}
+                                  km from you
+                                </span>
+                              </>
+                            )}
                           </div>
                         </div>
 
@@ -753,13 +911,14 @@ export default function App() {
               tasks={tasks}
               clusters={clusters}
               selectedTempFilter={tempFilter}
+              selectedCourierFilter={courierFilter}
               selectedTaskOrderId={selectedTaskOrderId}
               onSelectTask={setSelectedTaskOrderId}
               userLocation={userLocation}
               onSetUserLocation={setUserLocation}
               onRequestCreateTaskAtLocation={(loc) => {
                 setNewFacility(loc.name);
-                setNewAddress(loc.address || `${loc.name}, San Francisco, CA`);
+                setNewAddress(loc.address || `${loc.name}, Tamil Nadu, India`);
                 setNewLat(loc.lat);
                 setNewLng(loc.lng);
                 setIsAddTaskModalOpen(true);

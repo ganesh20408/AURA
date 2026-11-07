@@ -10,55 +10,76 @@ import { DeliveryTask, Vehicle } from '../types/logistics';
 
 const mockVehicles: Vehicle[] = [
   {
-    id: 'VEH-CRYO-01',
-    name: 'CryoGuard Alpha',
+    id: 'TN-01-CRYO-101',
+    name: 'Tamil Nadu CryoVault Express 01',
     type: 'LN2 Cryo-Van',
     temperatureCapacity: 'Frozen',
     tempRangeLabel: '-80°C to -20°C',
-    currentLat: 37.7749,
-    currentLng: -122.4194,
-    hubName: 'UCSF Central Bio-Depot',
+    currentLat: 13.0827,
+    currentLng: 80.2707,
+    hubName: 'Chennai Central Medical Hub (Park Town)',
     routeColor: '#0284c7',
     maxStops: 12,
-    driverName: 'Elena Vance',
+    driverName: 'Senthil Kumar',
+    operatingZone: 'Chennai Metro & North TN',
+    maxRadiusKm: 45,
   },
   {
-    id: 'VEH-REEF-02',
-    name: 'ColdChain Sprinter',
+    id: 'TN-02-REEF-204',
+    name: 'Tamil Nadu MedShield Reefer 04',
     type: 'Active Reefer Van',
     temperatureCapacity: 'Refrigerated',
     tempRangeLabel: '2°C to 8°C',
-    currentLat: 37.7651,
-    currentLng: -122.4581,
-    hubName: 'Parnassus Medical Hub',
+    currentLat: 13.0450,
+    currentLng: 80.2450,
+    hubName: 'TNMSC Central Warehouse (Nandanam)',
     routeColor: '#0d9488',
     maxStops: 15,
-    driverName: 'Marcus Sterling',
+    driverName: 'Anitha Ramesh',
+    operatingZone: 'Chennai & Kanchipuram Corridor',
+    maxRadiusKm: 50,
   },
   {
-    id: 'VEH-AMB-03',
-    name: 'StatRunner Sedan',
+    id: 'TN-03-AMB-309',
+    name: 'Tamil Nadu PharmaPulse EV 09',
     type: 'Thermal-Insulated EV',
     temperatureCapacity: 'Ambient',
     tempRangeLabel: '15°C to 25°C',
-    currentLat: 37.7895,
-    currentLng: -122.4014,
-    hubName: 'Downtown Clinical Lab',
+    currentLat: 13.0604,
+    currentLng: 80.2505,
+    hubName: 'Apollo Greams Dispatch Hub',
     routeColor: '#4f46e5',
     maxStops: 18,
-    driverName: 'Devon Brooks',
+    driverName: 'Karthik Subramanian',
+    operatingZone: 'Chennai Central Core',
+    maxRadiusKm: 35,
+  },
+  {
+    id: 'TN-04-REEF-CBE',
+    name: 'Kongu Pharma Reefer Express',
+    type: 'Active Reefer Van',
+    temperatureCapacity: 'Refrigerated',
+    tempRangeLabel: '2°C to 8°C',
+    currentLat: 11.0016,
+    currentLng: 76.9674,
+    hubName: 'TNMSC Regional Drug Hub (Coimbatore)',
+    routeColor: '#10b981',
+    maxStops: 12,
+    driverName: 'Murugan Palanisamy',
+    operatingZone: 'Western TN (Coimbatore)',
+    maxRadiusKm: 90,
   },
 ];
 
 const mockTasks: DeliveryTask[] = [
   {
-    orderId: 'ORD-901',
+    orderId: 'ORD-TN-901',
     status: 'Pending',
-    facilityName: 'Mission Bay Oncology Lab',
-    address: '1600 Owens St, San Francisco, CA',
-    lat: 37.7678,
-    lng: -122.3918,
-    specimenType: 'Cryopreserved CAR-T Cells',
+    facilityName: 'Cancer Institute (WIA) Adyar',
+    address: 'Sardar Patel Rd, Adyar, Chennai, Tamil Nadu 600020',
+    lat: 13.0076,
+    lng: 80.2443,
+    specimenType: 'Cryopreserved CAR-T Cells & Oncology Biopsies',
     requiredTemp: 'Frozen',
     priority: 'Routine',
     deadlineTime: '13:30',
@@ -68,12 +89,12 @@ const mockTasks: DeliveryTask[] = [
     distanceKm: null,
   },
   {
-    orderId: 'ORD-902',
+    orderId: 'ORD-TN-902',
     status: 'Pending',
-    facilityName: 'SF General Trauma Center',
-    address: '1001 Potrero Ave, San Francisco, CA',
-    lat: 37.7555,
-    lng: -122.4046,
+    facilityName: 'Rajiv Gandhi Government General Hospital (RGGGH)',
+    address: 'EVR Periyar Salai, Park Town, Chennai, Tamil Nadu 600003',
+    lat: 13.0818,
+    lng: 80.2774,
     specimenType: 'Flash-Frozen Intraoperative Biopsy',
     requiredTemp: 'Frozen',
     priority: 'STAT',
@@ -84,13 +105,13 @@ const mockTasks: DeliveryTask[] = [
     distanceKm: null,
   },
   {
-    orderId: 'ORD-903',
+    orderId: 'ORD-TN-903',
     status: 'Pending',
-    facilityName: 'CPMC Van Ness Campus',
-    address: '1101 Van Ness Ave, San Francisco, CA',
-    lat: 37.7858,
-    lng: -122.4214,
-    specimenType: 'Crossmatched Type-O Leukoreduced RBC',
+    facilityName: 'Government Stanley Medical College Hospital',
+    address: 'Old Jail Rd, Royapuram, Chennai, Tamil Nadu 600001',
+    lat: 13.1077,
+    lng: 80.2872,
+    specimenType: 'Crossmatched Type-O PRBC Blood Units',
     requiredTemp: 'Refrigerated',
     priority: 'STAT',
     deadlineTime: '09:30',
@@ -100,13 +121,13 @@ const mockTasks: DeliveryTask[] = [
     distanceKm: null,
   },
   {
-    orderId: 'ORD-904',
+    orderId: 'ORD-TN-904',
     status: 'Pending',
-    facilityName: 'St. Mary Medical Center',
-    address: '450 Stanyan St, San Francisco, CA',
-    lat: 37.7741,
-    lng: -122.4547,
-    specimenType: 'Formalin Fixed Tissue Cassette',
+    facilityName: 'Government Kilpauk Medical College Hospital',
+    address: '822 Poonamallee High Rd, Kilpauk, Chennai, Tamil Nadu 600010',
+    lat: 13.0784,
+    lng: 80.2428,
+    specimenType: 'Silver Sulfadiazine Burn Ointments',
     requiredTemp: 'Ambient',
     priority: 'Routine',
     deadlineTime: '15:00',
@@ -115,18 +136,35 @@ const mockTasks: DeliveryTask[] = [
     estimatedArrival: null,
     distanceKm: null,
   },
+  {
+    orderId: 'ORD-CBE-905',
+    status: 'Pending',
+    facilityName: 'Coimbatore Medical College Hospital (CMCH)',
+    address: 'Trichy Rd, Gopalapuram, Coimbatore, Tamil Nadu 641018',
+    lat: 11.0016,
+    lng: 76.9674,
+    specimenType: 'Cold-Chain Insulin Vials (2-8°C)',
+    requiredTemp: 'Refrigerated',
+    priority: 'Routine',
+    deadlineTime: '14:00',
+    assignedVehicleId: null,
+    stopSequence: null,
+    estimatedArrival: null,
+    distanceKm: null,
+  },
 ];
 
 test('Haversine distance and time helper functions work accurately', () => {
-  const dist = calculateHaversineKm(37.7749, -122.4194, 37.7555, -122.4046);
-  assert.ok(dist > 2 && dist < 6, `Expected urban SF distance between 2 and 6 km, got ${dist}`);
+  // Distance between RGGGH Park Town and Apollo Greams Road in Chennai (~4 to 6 km)
+  const dist = calculateHaversineKm(13.0818, 80.2774, 13.0604, 80.2505);
+  assert.ok(dist > 3 && dist < 7, `Expected Chennai urban distance between 3 and 7 km, got ${dist}`);
   assert.equal(parseTimeToMinutes('09:45'), 585);
   assert.equal(formatMinutesToTime(585), '09:45');
 });
 
 test('Hybrid solver enforces strict temperature profile matching (Frozen only on Frozen trucks)', () => {
   const result = runHybridRouteOptimization(mockVehicles, mockTasks);
-  assert.equal(result.tasks.length, 4);
+  assert.equal(result.tasks.length, 5);
 
   for (const task of result.tasks) {
     assert.equal(task.status, 'Optimized');
@@ -143,16 +181,35 @@ test('Hybrid solver enforces strict temperature profile matching (Frozen only on
 
 test('Hybrid solver prioritizes STAT tasks before Routine tasks on the same vehicle', () => {
   const result = runHybridRouteOptimization(mockVehicles, mockTasks);
-  const cryoCluster = result.clusters.find((c) => c.vehicleId === 'VEH-CRYO-01');
+  const cryoCluster = result.clusters.find((c) => c.vehicleId === 'TN-01-CRYO-101');
   assert.ok(cryoCluster, 'Cryo vehicle cluster must exist');
   assert.equal(cryoCluster.stops.length, 2);
 
-  // ORD-902 is STAT Frozen, ORD-901 is Routine Frozen
-  assert.equal(cryoCluster.stops[0].orderId, 'ORD-902');
+  // ORD-TN-902 is STAT Frozen, ORD-TN-901 is Routine Frozen
+  assert.equal(cryoCluster.stops[0].orderId, 'ORD-TN-902');
   assert.equal(cryoCluster.stops[0].priority, 'STAT');
   assert.equal(cryoCluster.stops[0].stopSequence, 1);
 
-  assert.equal(cryoCluster.stops[1].orderId, 'ORD-901');
+  assert.equal(cryoCluster.stops[1].orderId, 'ORD-TN-901');
   assert.equal(cryoCluster.stops[1].priority, 'Routine');
   assert.equal(cryoCluster.stops[1].stopSequence, 2);
+});
+
+test('Hybrid solver enforces operational territory geofencing (Coimbatore order routed to Western TN van, not Chennai)', () => {
+  const result = runHybridRouteOptimization(mockVehicles, mockTasks);
+  const cbeTask = result.tasks.find((t) => t.orderId === 'ORD-CBE-905');
+  assert.ok(cbeTask, 'Coimbatore task must be in results');
+  
+  // Both TN-02 (Chennai) and TN-04 (Coimbatore) are Refrigerated,
+  // but ORD-CBE-905 is in Coimbatore (~500 km from Chennai), so it must be assigned to TN-04-REEF-CBE!
+  assert.equal(
+    cbeTask.assignedVehicleId,
+    'TN-04-REEF-CBE',
+    `Expected Coimbatore order to be assigned to TN-04-REEF-CBE, but got ${cbeTask.assignedVehicleId}`
+  );
+
+  const chennaiReefCluster = result.clusters.find((c) => c.vehicleId === 'TN-02-REEF-204');
+  assert.ok(chennaiReefCluster, 'Chennai reef cluster must exist');
+  assert.equal(chennaiReefCluster.stops.length, 1);
+  assert.equal(chennaiReefCluster.stops[0].orderId, 'ORD-TN-903');
 });

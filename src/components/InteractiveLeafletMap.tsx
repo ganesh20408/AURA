@@ -4,12 +4,14 @@ import 'leaflet/dist/leaflet.css';
 import { DeliveryTask, OptimizedRouteCluster, TemperatureCapacity, Vehicle } from '../types/logistics';
 import { Layers, Navigation, Plus, Locate } from 'lucide-react';
 import { SelectedLocationData } from './LocationAutocompleteInput';
+import { calculateHaversineKm } from '../utils/optimizer';
 
 interface InteractiveLeafletMapProps {
   vehicles: Vehicle[];
   tasks: DeliveryTask[];
   clusters: OptimizedRouteCluster[];
   selectedTempFilter: TemperatureCapacity | 'All';
+  selectedCourierFilter?: string;
   selectedTaskOrderId: string | null;
   onSelectTask: (orderId: string | null) => void;
   userLocation: SelectedLocationData | null;
@@ -31,6 +33,7 @@ export const InteractiveLeafletMap: React.FC<InteractiveLeafletMapProps> = ({
   tasks,
   clusters,
   selectedTempFilter,
+  selectedCourierFilter,
   selectedTaskOrderId,
   onSelectTask,
   userLocation,
@@ -123,19 +126,50 @@ export const InteractiveLeafletMap: React.FC<InteractiveLeafletMapProps> = ({
     routesGroup.clearLayers();
     markersGroup.clearLayers();
 
-    const visibleClusters = clusters.filter(
-      (c) =>
-        c.stops.length > 0 &&
-        (selectedTempFilter === 'All' || c.temperatureCapacity === selectedTempFilter)
-    );
+    const isSpecificCourier =
+      selectedCourierFilter &&
+      selectedCourierFilter !== 'All' &&
+      selectedCourierFilter !== 'NEAR_GPS';
+    const isNearGps = selectedCourierFilter === 'NEAR_GPS';
 
-    const visibleTasks = tasks.filter(
-      (t) => selectedTempFilter === 'All' || t.requiredTemp === selectedTempFilter
-    );
+    const visibleClusters = clusters.filter((c) => {
+      const matchesTemp =
+        selectedTempFilter === 'All' || c.temperatureCapacity === selectedTempFilter;
+      const matchesCourier = !isSpecificCourier || c.vehicleId === selectedCourierFilter;
+      return c.stops.length > 0 && matchesTemp && matchesCourier;
+    });
 
-    const visibleVehicles = vehicles.filter(
-      (v) => selectedTempFilter === 'All' || v.temperatureCapacity === selectedTempFilter
-    );
+    const visibleVehicles = vehicles.filter((v) => {
+      const matchesTemp =
+        selectedTempFilter === 'All' || v.temperatureCapacity === selectedTempFilter;
+      const matchesCourier = !isSpecificCourier || v.id === selectedCourierFilter;
+      return matchesTemp && matchesCourier;
+    });
+
+    const visibleTasks = tasks.filter((t) => {
+      const matchesTemp =
+        selectedTempFilter === 'All' || t.requiredTemp === selectedTempFilter;
+      if (!matchesTemp) return false;
+      if (isNearGps) {
+        if (!userLocation) return true;
+        return (
+          calculateHaversineKm(userLocation.lat, userLocation.lng, t.lat, t.lng) <= 35
+        );
+      }
+      if (isSpecificCourier) {
+        if (t.assignedVehicleId) {
+          return t.assignedVehicleId === selectedCourierFilter;
+        }
+        const v = vehicles.find((veh) => veh.id === selectedCourierFilter);
+        if (v) {
+          const d = calculateHaversineKm(v.currentLat, v.currentLng, t.lat, t.lng);
+          return (
+            d <= (v.maxRadiusKm || 50) && t.requiredTemp === v.temperatureCapacity
+          );
+        }
+      }
+      return true;
+    });
 
     // 1. Draw Multi-Stop Route Polylines
     visibleClusters.forEach((cluster) => {
@@ -253,7 +287,25 @@ export const InteractiveLeafletMap: React.FC<InteractiveLeafletMapProps> = ({
         marker.openPopup();
       }
     });
-  }, [vehicles, tasks, clusters, selectedTempFilter, selectedTaskOrderId, onSelectTask]);
+  }, [vehicles, tasks, clusters, selectedTempFilter, selectedCourierFilter, userLocation, selectedTaskOrderId, onSelectTask]);
+
+  // Auto-center map when courier or GPS mode changes
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map) return;
+    if (selectedCourierFilter === 'NEAR_GPS' && userLocation) {
+      map.flyTo([userLocation.lat, userLocation.lng], 12, { animate: true });
+    } else if (
+      selectedCourierFilter &&
+      selectedCourierFilter !== 'All' &&
+      selectedCourierFilter !== 'NEAR_GPS'
+    ) {
+      const veh = vehicles.find((v) => v.id === selectedCourierFilter);
+      if (veh) {
+        map.flyTo([veh.currentLat, veh.currentLng], 12, { animate: true });
+      }
+    }
+  }, [selectedCourierFilter]);
 
   // Center on Selected Task
   useEffect(() => {

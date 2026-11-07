@@ -100,8 +100,17 @@ export function runHybridRouteOptimization(
         task.lat,
         task.lng
       );
-      // Load-balanced spatial assignment score
-      const score = distFromHub + currentLoad * 1.85;
+      // Operational territory & radius enforcement:
+      // Couriers operate in specific regions (e.g. Chennai Metro vs Western TN vs Southern TN).
+      // If a task falls outside a courier's defined service radius, apply a heavy penalty
+      // so local couriers only receive orders within their operational zone.
+      let radiusPenalty = 0;
+      if (candidate.maxRadiusKm && distFromHub > candidate.maxRadiusKm) {
+        radiusPenalty = 10000 + (distFromHub - candidate.maxRadiusKm) * 20;
+      }
+
+      // Load-balanced spatial assignment score with territory geofence
+      const score = distFromHub + currentLoad * 1.85 + radiusPenalty;
       if (score < bestScore) {
         bestScore = score;
         bestVehicle = candidate;

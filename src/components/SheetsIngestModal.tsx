@@ -170,7 +170,7 @@ export const SheetsIngestModal: React.FC<SheetsIngestModalProps> = ({
             </div>
           )}
 
-          {/* Option 1: Staged SF Hospital Manifest Preview & Instant Pull */}
+          {/* Option 1: Staged Tamil Nadu Regional Manifest Preview & Instant Pull */}
           <div className="border border-slate-200 rounded-lg p-4 bg-slate-50/70">
             <div className="flex items-center justify-between gap-4">
               <div>
@@ -178,7 +178,7 @@ export const SheetsIngestModal: React.FC<SheetsIngestModalProps> = ({
                   01. Staged Regional Lab Manifest (Sheet #GS-2026-11)
                 </h3>
                 <p className="text-xs text-slate-600 mt-0.5">
-                  Pre-validated San Francisco clinical laboratory pickup coordinates ready for immediate SQL table insertion.
+                  Pre-validated Tamil Nadu & Chennai clinical laboratory pickup coordinates ready for immediate SQL table insertion.
                 </p>
               </div>
               <button

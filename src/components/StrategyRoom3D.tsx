@@ -23,36 +23,37 @@ const _dummyScale = new THREE.Vector3();
 const _dummyQuat = new THREE.Quaternion();
 const _dummyPos = new THREE.Vector3();
 
-type CameraPreset = 'overview' | 'cryoCorridor' | 'parnassusHub' | 'topDown';
+type CameraPreset = 'overview' | 'cryoCorridor' | 'northChennaiHub' | 'topDown';
 
 const CAMERA_PRESETS: Record<
   CameraPreset,
   { pos: [number, number, number]; look: [number, number, number]; label: string }
 > = {
   overview: {
-    pos: [0, 34, 46],
+    pos: [0, 36, 44],
     look: [0, 1.5, 0],
-    label: 'Isometric Overview',
+    label: 'Chennai Digital Twin Overview',
   },
   cryoCorridor: {
-    pos: [24, 15, 22],
-    look: [8, 2.5, -2],
-    label: 'Chennai Central & Adyar Hub',
+    pos: [18, 16, 18],
+    look: [6, 2.5, 6],
+    label: 'Anna Salai & Adyar Cryo Hub',
   },
-  parnassusHub: {
-    pos: [-26, 16, 20],
-    look: [-10, 2.5, 2],
-    label: 'Coimbatore & Madurai Corridor',
+  northChennaiHub: {
+    pos: [-18, 16, -10],
+    look: [-4, 2.5, -4],
+    label: 'Kilpauk & Stanley Medical Hub',
   },
   topDown: {
-    pos: [0, 56, 4],
+    pos: [0, 58, 2],
     look: [0, 0, 0],
-    label: 'Strategic Planimetric View',
+    label: 'Planimetric Chennai Grid',
   },
 };
 
 /**
- * Generates a 100% procedural high-contrast architectural city tabletop grid texture.
+ * Generates a 100% procedural high-contrast architectural city tabletop grid texture
+ * depicting Chennai & Tamil Nadu healthcare corridor with Marina Beach coastline.
  */
 function createProceduralTabletopTexture(maxAnisotropy: number): THREE.CanvasTexture {
   const canvas = document.createElement('canvas');
@@ -64,8 +65,25 @@ function createProceduralTabletopTexture(maxAnisotropy: number): THREE.CanvasTex
   ctx.fillStyle = '#0c1424';
   ctx.fillRect(0, 0, 1024, 1024);
 
+  // Eastern coastline - Bay of Bengal / Marina Beach
+  ctx.fillStyle = '#082f49';
+  ctx.beginPath();
+  ctx.moveTo(820, 0);
+  ctx.bezierCurveTo(800, 300, 840, 650, 780, 1024);
+  ctx.lineTo(1024, 1024);
+  ctx.lineTo(1024, 0);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.strokeStyle = '#0284c7';
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.moveTo(820, 0);
+  ctx.bezierCurveTo(800, 300, 840, 650, 780, 1024);
+  ctx.stroke();
+
   // Subtle city block sub-grid
-  ctx.strokeStyle = 'rgba(56, 189, 248, 0.10)';
+  ctx.strokeStyle = 'rgba(56, 189, 248, 0.08)';
   ctx.lineWidth = 1;
   const step = 32;
   for (let i = 0; i <= 1024; i += step) {
@@ -80,10 +98,10 @@ function createProceduralTabletopTexture(maxAnisotropy: number): THREE.CanvasTex
     ctx.stroke();
   }
 
-  // Major arterial avenues
+  // Major arterial avenues (Anna Salai, Poonamallee High Rd, GST Road)
   ctx.strokeStyle = 'rgba(148, 163, 184, 0.28)';
   ctx.lineWidth = 4;
-  for (let i = 128; i < 1024; i += 128) {
+  for (let i = 128; i < 820; i += 128) {
     ctx.beginPath();
     ctx.moveTo(i, 0);
     ctx.lineTo(i, 1024);
@@ -91,25 +109,70 @@ function createProceduralTabletopTexture(maxAnisotropy: number): THREE.CanvasTex
 
     ctx.beginPath();
     ctx.moveTo(0, i);
-    ctx.lineTo(1024, i);
+    ctx.lineTo(820, i);
     ctx.stroke();
   }
 
-  // Diagonal Market Street corridor
-  ctx.strokeStyle = 'rgba(56, 189, 248, 0.22)';
+  // Diagonal Anna Salai / Mount Road arterial corridor
+  ctx.strokeStyle = 'rgba(56, 189, 248, 0.25)';
   ctx.lineWidth = 8;
   ctx.beginPath();
-  ctx.moveTo(160, 864);
-  ctx.lineTo(896, 128);
+  ctx.moveTo(200, 880);
+  ctx.lineTo(760, 220);
+  ctx.stroke();
+
+  // Coastline road: Kamarajar Salai (Marina Beach Road)
+  ctx.strokeStyle = 'rgba(14, 165, 233, 0.35)';
+  ctx.lineWidth = 6;
+  ctx.beginPath();
+  ctx.moveTo(790, 0);
+  ctx.bezierCurveTo(770, 300, 810, 650, 750, 1024);
   ctx.stroke();
 
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.wrapS = THREE.RepeatWrapping;
   texture.wrapT = THREE.RepeatWrapping;
-  texture.repeat.set(2, 2);
+  texture.repeat.set(1, 1);
   texture.anisotropy = maxAnisotropy;
   return texture;
+}
+
+/**
+ * Creates a high-visibility 3D billboard sprite label for hospital landmarks and couriers.
+ */
+function createTextSprite(text: string, colorHex: number, subLabel?: string): THREE.Sprite {
+  const canvas = document.createElement('canvas');
+  canvas.width = 320;
+  canvas.height = subLabel ? 80 : 64;
+  const ctx = canvas.getContext('2d')!;
+
+  ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
+  ctx.strokeStyle = `#${colorHex.toString(16).padStart(6, '0')}`;
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.roundRect(4, 4, 312, subLabel ? 72 : 56, 10);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 22px "Plus Jakarta Sans", sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(text, 160, subLabel ? 28 : 28);
+
+  if (subLabel) {
+    ctx.fillStyle = `#${colorHex.toString(16).padStart(6, '0')}`;
+    ctx.font = '500 15px "JetBrains Mono", monospace';
+    ctx.fillText(subLabel, 160, 54);
+  }
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  const spriteMat = new THREE.SpriteMaterial({ map: tex, depthTest: false });
+  const sprite = new THREE.Sprite(spriteMat);
+  sprite.scale.set(subLabel ? 7.8 : 7.0, subLabel ? 1.95 : 1.4, 1);
+  return sprite;
 }
 
 /**
@@ -274,7 +337,8 @@ function buildProceduralHospitalGroup(
  */
 function buildProceduralCourierTruck(
   routeColorHex: number,
-  shadowTex: THREE.Texture
+  shadowTex: THREE.Texture,
+  vehLabel?: string
 ): THREE.Group {
   const truck = new THREE.Group();
 
@@ -384,6 +448,14 @@ function buildProceduralCourierTruck(
     const wheel = new THREE.Mesh(wheelGeo, chassisMat);
     wheel.position.set(wx, wy, wz);
     truck.add(wheel);
+  }
+
+  // 9. Floating Live Vehicle Telemetry Label Sprite
+  if (vehLabel) {
+    const labelSprite = createTextSprite(vehLabel, routeColorHex);
+    labelSprite.position.set(0, 2.7, 0);
+    labelSprite.scale.set(5.8, 1.25, 1);
+    truck.add(labelSprite);
   }
 
   return truck;
@@ -638,21 +710,22 @@ export const StrategyRoom3D: React.FC<StrategyRoom3DProps> = ({
     instancedCityBlocks.computeBoundingSphere();
     scene.add(instancedCityBlocks);
 
-    // 8. Eight 7-Part Composite Hospital & Clinical Lab Landmarks
+    // 8. Eight Composite Chennai / Tamil Nadu Hospital & Clinical Lab Landmarks
     const hospitalNodes: Array<{
       name: string;
+      sub: string;
       pos: [number, number];
       accent: number;
       scale: number;
     }> = [
-      { name: 'UCSF Mission Bay Bio-Hub', pos: [15, 5], accent: 0x0284c7, scale: 1.25 },
-      { name: 'Zuckerberg SF General Trauma', pos: [11, 13], accent: 0x38bdf8, scale: 1.1 },
-      { name: 'UCSF Parnassus Central Lab', pos: [-15, 5], accent: 0x0d9488, scale: 1.3 },
-      { name: 'Kaiser Geary Medical Center', pos: [-16, -6], accent: 0x14b8a6, scale: 1.05 },
-      { name: 'CPMC Van Ness Campus', pos: [1, -5], accent: 0x6366f1, scale: 1.2 },
-      { name: 'UCSF Helen Diller Oncology', pos: [-6, -8], accent: 0x0284c7, scale: 1.1 },
-      { name: 'Saint Francis Memorial', pos: [5, -10], accent: 0x2dd4bf, scale: 0.95 },
-      { name: 'Chinese Hospital SF', pos: [9, -12], accent: 0x818cf8, scale: 0.9 },
+      { name: 'RGGGH Central', sub: 'Park Town Trauma & Stat Lab', pos: [6, -14], accent: 0x0284c7, scale: 1.35 },
+      { name: 'Apollo Greams Rd', sub: 'Multi-Specialty & Cryo', pos: [2, -4], accent: 0x38bdf8, scale: 1.25 },
+      { name: 'TNMSC Central Hub', sub: 'Nandanam Pharma Supply', pos: [-5, 4], accent: 0x14b8a6, scale: 1.2 },
+      { name: 'WIA Cancer Inst', sub: 'Adyar Cryo Biopsy Lab', pos: [10, 10], accent: 0x0284c7, scale: 1.2 },
+      { name: 'Kilpauk Med College', sub: 'Burns & Clinical Lab', pos: [-12, -8], accent: 0x0d9488, scale: 1.15 },
+      { name: 'Stanley Medical', sub: 'George Town North Chennai', pos: [4, -18], accent: 0x6366f1, scale: 1.1 },
+      { name: 'King Institute', sub: 'Guindy Vaccine Center', pos: [-6, 14], accent: 0x2dd4bf, scale: 1.1 },
+      { name: 'Kauvery Hospital', sub: 'Alwarpet Acute Care', pos: [6, 3], accent: 0x818cf8, scale: 1.05 },
     ];
 
     hospitalNodes.forEach((h) => {
@@ -664,6 +737,11 @@ export const StrategyRoom3D: React.FC<StrategyRoom3DProps> = ({
       );
       hGroup.position.set(h.pos[0], 0, h.pos[1]);
       scene.add(hGroup);
+
+      const labelSprite = createTextSprite(h.name, h.accent, h.sub);
+      labelSprite.position.set(h.pos[0], 4.2 * h.scale + 1.2, h.pos[1]);
+      labelSprite.scale.set(6.2, 1.5, 1);
+      scene.add(labelSprite);
     });
 
     // 9. Mathematical Spline Route Paths & Active Courier Trucks
@@ -676,38 +754,43 @@ export const StrategyRoom3D: React.FC<StrategyRoom3DProps> = ({
         temp: 'Frozen',
         colorHex: 0x0284c7, // Sky Blue (-80C Cryo)
         waypoints: [
-          new THREE.Vector3(15, 0.08, 5),
-          new THREE.Vector3(15, 0.08, 13),
-          new THREE.Vector3(11, 0.08, 13),
-          new THREE.Vector3(1, 0.08, 13),
-          new THREE.Vector3(1, 0.08, -8),
-          new THREE.Vector3(-6, 0.08, -8),
-          new THREE.Vector3(-6, 0.08, 5),
-          new THREE.Vector3(15, 0.08, 5),
+          new THREE.Vector3(10, 0.08, 10), // WIA Adyar
+          new THREE.Vector3(2, 0.08, 4),   // Corridor
+          new THREE.Vector3(-5, 0.08, 4),  // TNMSC Hub
+          new THREE.Vector3(-1, 0.08, -1),
+          new THREE.Vector3(2, 0.08, -4),  // Apollo Greams
+          new THREE.Vector3(4, 0.08, -10),
+          new THREE.Vector3(6, 0.08, -14), // RGGGH Central
+          new THREE.Vector3(4, 0.08, -18), // Stanley Medical
+          new THREE.Vector3(8, 0.08, -10), // Coastline Beach Corridor
+          new THREE.Vector3(10, 0.08, 2),
+          new THREE.Vector3(10, 0.08, 10),
         ],
       },
       {
         temp: 'Refrigerated',
-        colorHex: 0x14b8a6, // Teal (2-8C Reefer)
+        colorHex: 0x14b8a6, // Teal (2-8C Reefer Vaccines / Insulin)
         waypoints: [
-          new THREE.Vector3(-15, 0.08, 5),
-          new THREE.Vector3(-16, 0.08, -6),
-          new THREE.Vector3(-3, 0.08, -6),
-          new THREE.Vector3(5, 0.08, -10),
-          new THREE.Vector3(5, 0.08, 5),
-          new THREE.Vector3(-15, 0.08, 5),
+          new THREE.Vector3(-6, 0.08, 14), // King Institute Guindy
+          new THREE.Vector3(-5, 0.08, 4),  // TNMSC Hub Nandanam
+          new THREE.Vector3(6, 0.08, 3),   // Kauvery Alwarpet
+          new THREE.Vector3(2, 0.08, -4),  // Apollo Greams
+          new THREE.Vector3(-6, 0.08, -6),
+          new THREE.Vector3(-12, 0.08, -8),// Kilpauk Medical
+          new THREE.Vector3(-10, 0.08, 2),
+          new THREE.Vector3(-6, 0.08, 14),
         ],
       },
       {
         temp: 'Ambient',
-        colorHex: 0x6366f1, // Indigo (18-24C Ambient)
+        colorHex: 0x6366f1, // Indigo (15-25C Ambient Tablets / Ointments)
         waypoints: [
-          new THREE.Vector3(1, 0.08, -5),
-          new THREE.Vector3(9, 0.08, -12),
-          new THREE.Vector3(18, 0.08, -12),
-          new THREE.Vector3(18, 0.08, 9),
-          new THREE.Vector3(1, 0.08, 9),
-          new THREE.Vector3(1, 0.08, -5),
+          new THREE.Vector3(-5, 0.08, 4),  // TNMSC Central Depot
+          new THREE.Vector3(6, 0.08, 3),   // Kauvery Hospital
+          new THREE.Vector3(2, 0.08, -4),  // Apollo Greams
+          new THREE.Vector3(6, 0.08, -14), // RGGGH Central
+          new THREE.Vector3(-12, 0.08, -8),// Kilpauk Medical
+          new THREE.Vector3(-5, 0.08, 4),
         ],
       },
     ];
@@ -735,7 +818,10 @@ export const StrategyRoom3D: React.FC<StrategyRoom3DProps> = ({
       tubeMesh.position.y = 0.06;
       scene.add(tubeMesh);
 
-      const truckGroup = buildProceduralCourierTruck(rc.colorHex, contactShadowTex);
+      const matchingVeh = vehicles.find((v) => v.temperatureCapacity === rc.temp) || vehicles[idx];
+      const truckLabel = matchingVeh ? `${matchingVeh.id} (${matchingVeh.temperatureCapacity})` : undefined;
+
+      const truckGroup = buildProceduralCourierTruck(rc.colorHex, contactShadowTex, truckLabel);
       scene.add(truckGroup);
 
       activeTruckActors.push({
@@ -867,7 +953,7 @@ export const StrategyRoom3D: React.FC<StrategyRoom3DProps> = ({
       <div className="absolute top-4 left-4 z-10 bg-[#0f172a]/95 border border-slate-700/80 rounded-lg px-4 py-3 text-slate-100 shadow-lg max-w-md pointer-events-auto">
         <div className="flex items-center gap-2 text-xs font-mono text-sky-400">
           <Box className="w-3.5 h-3.5" />
-          <span>DIGITAL TWIN TABLETOP · SAN FRANCISCO BIO-GRID</span>
+          <span>DIGITAL TWIN TABLETOP · CHENNAI & TAMIL NADU PHARMA-GRID</span>
         </div>
         <h2 className="text-sm font-bold text-white mt-1">
           Real-Time Multi-Stop Cold-Chain Spatial Telemetry

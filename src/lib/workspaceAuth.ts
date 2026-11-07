@@ -152,9 +152,9 @@ export async function readTasksFromSpreadsheet(
     const r = rows[i];
     if (!r || r.length === 0) continue;
     const orderId = (r[0] || `GS-${1000 + i}`).trim();
-    const facilityName = (r[1] || `San Francisco Clinical Site #${i}`).trim();
-    const lat = parseFloat(r[2]) || 37.765 + (i % 5) * 0.006;
-    const lng = parseFloat(r[3]) || -122.415 - (i % 5) * 0.008;
+    const facilityName = (r[1] || `Tamil Nadu Clinical Site #${i}`).trim();
+    const lat = parseFloat(r[2]) || 13.045 + (i % 5) * 0.012;
+    const lng = parseFloat(r[3]) || 80.245 + (i % 5) * 0.008;
     const specimenType = (r[4] || 'Cryopreserved Diagnostic Specimen').trim();
     const rawTemp = (r[5] || 'Refrigerated').trim();
     const requiredTemp: TemperatureCapacity =
@@ -169,7 +169,7 @@ export async function readTasksFromSpreadsheet(
       orderId,
       status: 'Pending',
       facilityName,
-      address: `${facilityName}, San Francisco, CA`,
+      address: `${facilityName}, Tamil Nadu, India`,
       lat,
       lng,
       specimenType,

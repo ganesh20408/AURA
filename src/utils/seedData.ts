@@ -13,6 +13,8 @@ export const INITIAL_VEHICLES: Vehicle[] = [
     routeColor: '#0284c7', // Sky-600
     maxStops: 10,
     driverName: 'Senthil Kumar (Certified Bio-Courier)',
+    operatingZone: 'Chennai Metro & North TN',
+    maxRadiusKm: 45,
   },
   {
     id: 'TN-02-REEF-204',
@@ -26,6 +28,8 @@ export const INITIAL_VEHICLES: Vehicle[] = [
     routeColor: '#0d9488', // Teal-600
     maxStops: 14,
     driverName: 'Anitha Ramesh (Pharm-Logistics Specialist)',
+    operatingZone: 'Chennai & Kanchipuram Corridor',
+    maxRadiusKm: 50,
   },
   {
     id: 'TN-03-AMB-309',
@@ -39,6 +43,38 @@ export const INITIAL_VEHICLES: Vehicle[] = [
     routeColor: '#4f46e5', // Indigo-600
     maxStops: 16,
     driverName: 'Karthik Subramanian',
+    operatingZone: 'Chennai Central Core',
+    maxRadiusKm: 35,
+  },
+  {
+    id: 'TN-04-REEF-CBE',
+    name: 'Kongu Pharma Reefer Express',
+    type: 'Active Refrigerated Transit Van',
+    temperatureCapacity: 'Refrigerated',
+    tempRangeLabel: '2°C to 8°C Cold Chain',
+    currentLat: 11.0016,
+    currentLng: 76.9674,
+    hubName: 'TNMSC Regional Drug Hub (Race Course, Coimbatore)',
+    routeColor: '#10b981', // Emerald-500
+    maxStops: 12,
+    driverName: 'Murugan Palanisamy',
+    operatingZone: 'Western TN (Coimbatore, Tiruppur, Salem)',
+    maxRadiusKm: 90,
+  },
+  {
+    id: 'TN-05-CRYO-MDU',
+    name: 'Pandya CryoVault Courier',
+    type: 'Liquid Nitrogen Cryo Transit Unit',
+    temperatureCapacity: 'Frozen',
+    tempRangeLabel: '-80°C to -20°C Deep Cryo',
+    currentLat: 9.9272,
+    currentLng: 78.1284,
+    hubName: 'Government Rajaji Hospital Dispatch (Madurai)',
+    routeColor: '#f59e0b', // Amber-500
+    maxStops: 10,
+    driverName: 'Muthuvel Pandian',
+    operatingZone: 'Southern TN (Madurai, Trichy, Tirunelveli)',
+    maxRadiusKm: 95,
   },
 ];
 
@@ -186,6 +222,42 @@ export const INITIAL_DELIVERY_TASKS: DeliveryTask[] = [
     estimatedArrival: null,
     distanceKm: null,
     batchSource: 'Epidemiology Surveillance Batch',
+  },
+  // 9. Western TN Regional Order - Coimbatore Medical College Hospital (Refrigerated)
+  {
+    orderId: 'MED-VAC-CBE-01',
+    status: 'Pending',
+    facilityName: 'Coimbatore Medical College Hospital (CMCH)',
+    address: 'Trichy Rd, Gopalapuram, Coimbatore, Tamil Nadu 641018',
+    lat: 11.0016,
+    lng: 76.9674,
+    specimenType: 'Recombinant Vaccines & Cold-Chain Insulin Vials (2-8°C)',
+    requiredTemp: 'Refrigerated',
+    priority: 'Routine',
+    deadlineTime: '14:00',
+    assignedVehicleId: null,
+    stopSequence: null,
+    estimatedArrival: null,
+    distanceKm: null,
+    batchSource: 'Western TN Regional Healthcare Dispatch',
+  },
+  // 10. Southern TN Regional Order - Government Rajaji Hospital Madurai (Frozen)
+  {
+    orderId: 'SPEC-FRZ-MDU-02',
+    status: 'Pending',
+    facilityName: 'Government Rajaji Hospital (GRH) Madurai',
+    address: 'Panagal Rd, Alwarpuram, Madurai, Tamil Nadu 625020',
+    lat: 9.9272,
+    lng: 78.1284,
+    specimenType: 'Deep Cryo Bone Marrow & Histopathology Vials (-80°C)',
+    requiredTemp: 'Frozen',
+    priority: 'STAT',
+    deadlineTime: '10:30',
+    assignedVehicleId: null,
+    stopSequence: null,
+    estimatedArrival: null,
+    distanceKm: null,
+    batchSource: 'Southern TN Trauma & Oncology Network',
   },
 ];
 

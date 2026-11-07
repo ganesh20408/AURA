@@ -14,6 +14,8 @@ export interface Vehicle {
   routeColor: string;
   maxStops: number;
   driverName: string;
+  operatingZone?: string;
+  maxRadiusKm?: number;
 }
 
 export interface DeliveryTask {

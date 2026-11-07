@@ -61,7 +61,7 @@ export const LocationAutocompleteInput: React.FC<LocationAutocompleteInputProps>
         if (!list.some((k) => k.name.toLowerCase() === loc.name.toLowerCase())) {
           list.push({
             name: loc.name,
-            address: loc.address || `${loc.name}, San Francisco, CA`,
+            address: loc.address || `${loc.name}, Tamil Nadu, India`,
             lat: loc.lat,
             lng: loc.lng,
             category: 'Clinic',

@@ -41,6 +41,7 @@ interface DispatcherMapProps {
   tasks: DeliveryTask[];
   clusters: OptimizedRouteCluster[];
   selectedTempFilter: TemperatureCapacity | 'All';
+  selectedCourierFilter?: string;
   selectedTaskOrderId: string | null;
   onSelectTask: (orderId: string | null) => void;
   userLocation?: SelectedLocationData | null;
@@ -181,6 +182,7 @@ export const DispatcherMap: React.FC<DispatcherMapProps> = ({
   tasks,
   clusters,
   selectedTempFilter,
+  selectedCourierFilter,
   selectedTaskOrderId,
   onSelectTask,
   userLocation = null,
@@ -627,6 +629,7 @@ export const DispatcherMap: React.FC<DispatcherMapProps> = ({
               tasks={tasks}
               clusters={clusters}
               selectedTempFilter={selectedTempFilter}
+              selectedCourierFilter={selectedCourierFilter}
               selectedTaskOrderId={selectedTaskOrderId}
               onSelectTask={onSelectTask}
               userLocation={userLocation}
@@ -644,7 +647,7 @@ export const DispatcherMap: React.FC<DispatcherMapProps> = ({
             <svg
               viewBox="0 0 900 620"
               className="w-full h-full object-cover"
-              aria-label="San Francisco Medical Courier Route Map"
+              aria-label="Tamil Nadu & Chennai Medical Courier Route Map"
             >
               <defs>
                 <pattern
@@ -676,7 +679,7 @@ export const DispatcherMap: React.FC<DispatcherMapProps> = ({
                 </pattern>
               </defs>
 
-              {/* Bay Water & SF Peninsula Silhouette */}
+              {/* Bay of Bengal Coastline & Tamil Nadu Land Surface */}
               <rect width="900" height="620" fill="#070d19" />
               <path
                 d="M 45,620 L 40,210 Q 55,115 140,85 L 360,55 Q 520,40 645,95 L 775,215 Q 825,360 810,620 Z"
