@@ -130,12 +130,12 @@ app.post('/api/tasks', (req, res) => {
     }
 
     const newOrder: DeliveryTask = {
-      orderId: `SPEC-${Math.floor(5200 + Math.random() * 4000)}`,
+      orderId: `MED-${Math.floor(5200 + Math.random() * 4000)}`,
       status: 'Pending',
       facilityName: String(facilityName).trim(),
-      address: String(address || `${facilityName}, San Francisco, CA`).trim(),
-      lat: Number(lat) || 37.7749,
-      lng: Number(lng) || -122.4194,
+      address: String(address || `${facilityName}, Tamil Nadu, India`).trim(),
+      lat: Number(lat) || 13.0827,
+      lng: Number(lng) || 80.2707,
       specimenType: String(specimenType).trim(),
       requiredTemp: requiredTemp as TemperatureCapacity,
       priority: priority === 'STAT' ? 'STAT' : 'Routine',
@@ -199,21 +199,21 @@ app.post('/api/ai/analyze-routes', async (req, res) => {
     const frozenCount = deliveryTasksTable.filter((t) => t.requiredTemp === 'Frozen').length;
     const reefCount = deliveryTasksTable.filter((t) => t.requiredTemp === 'Refrigerated').length;
     return {
-      executiveSummary: `Evaluated ${deliveryTasksTable.length} medical specimen orders (${statCount} STAT priority, ${frozenCount} Ultra-Low Frozen -80°C, ${reefCount} Refrigerated 2–8°C) across ${vehiclesTable.length} specialized cold-chain courier units. Strict thermal partitioning achieved 100% custody compliance with zero cross-temperature contamination risk.`,
+      executiveSummary: `Evaluated ${deliveryTasksTable.length} medical, tablet, ointment, and cold-chain orders (${statCount} STAT priority, ${frozenCount} Ultra-Low Frozen -80°C, ${reefCount} Refrigerated 2–8°C) across ${vehiclesTable.length} specialized Tamil Nadu courier units. Strict thermal custody maintained across Chennai, Coimbatore, and Madurai healthcare corridors.`,
       coldChainRiskAnalysis: [
-        `VEH-CRYO-101 (LN2 Dry-Vapor Cryo Van): Carries ${frozenCount} ultra-low -80°C specimens including intraoperative biopsies and CAR-T infusions. Limit door-open custody transfer time at Zuckerberg SF General to < 45 seconds to preserve vapor phase stability.`,
-        `VEH-REEF-204 (Dual-Zone Active Reefer): Handles ${reefCount} refrigerated blood bank and platelet orders (2°C–8°C). Recommend pre-chilling secondary airlocks prior to Geary Blvd corridor transit.`,
-        `VEH-AMB-309 (Controlled Ambient Sedan): Assigned ${deliveryTasksTable.length - frozenCount - reefCount} controlled ambient pathology and blood gas specimens (18°C–24°C) with zero thermal excursion exposure.`,
+        `TN-01-CRYO-101 (LN2 Cryo Van): Transports ${frozenCount} ultra-low -80°C specimens & cryo-stem cells. Door-open custody transfer time at Adyar Cancer Institute limited to < 45 seconds to preserve liquid vapor stability.`,
+        `TN-02-REEF-204 (Dual-Zone Reefer): Delivers ${reefCount} refrigerated insulin, anti-rabies immunoglobulins, and packed RBCs (2°C–8°C). Secondary cooling buffers pre-chilled for Anna Salai & Poonamallee corridors.`,
+        `TN-03-AMB-309 (Controlled Ambient Sedan): Dispatches ${deliveryTasksTable.length - frozenCount - reefCount} controlled ambient tablet strips, topical antibiotic ointments, and burn creams with zero thermal excursion exposure.`,
       ],
       statBottleneckMitigations: [
-        `Prioritize SPEC-4804 (Kaiser Geary O-Negative RBCs, deadline 09:25) and SPEC-4801 (ZSFG Intraoperative Biopsy, deadline 09:30) as Stop #1 on their respective thermal clusters.`,
-        `Bypass Market Street surface congestion between 09:15 and 09:45 by routing VEH-CRYO-101 along 3rd Street -> Potrero Avenue -> Divisadero corridor.`,
-        `Enable automated barcode pre-manifesting at UCSF Helen Diller Cancer Center receiving dock to shave 3.5 minutes off custody handoff.`,
+        `Prioritize MED-ONT-102 (Kilpauk Medical College Burn Ointments, deadline 09:45) and SPEC-FRZ-201 (Adyar Cancer Institute Biopsies, deadline 09:30) as Stop #1 on their respective corridors.`,
+        `Bypass EVR Periyar Salai morning peak traffic by routing TN-01-CRYO-101 via Outer Ring Road & Kamarajar Promenade.`,
+        `Pre-manifest digital barcode receiving at Rajiv Gandhi Government General Hospital (RGGGH) emergency dock to save 4 minutes per batch delivery.`,
       ],
       fleetRebalancingRecommendation:
         customQuery
-          ? `Addressing dispatcher query ("${customQuery}"): Maintain dedicated LN2 Cryo isolation on VEH-CRYO-101 and pre-stage a backup refrigerated courier near Parnassus Heights if STAT oncology volume increases by >20%.`
-          : 'Pre-stage VEH-CRYO-101 at UCSF Mission Bay Bio-Hub immediately after completing CPMC Davies stop to absorb incoming 11:00 AM surgical cryo-biopsy batches.',
+          ? `Addressing dispatcher query ("${customQuery}"): Maintain dedicated LN2 cryo van at Chennai Central Hub and stage a refrigerated standby van near Coimbatore/Madurai if Western/Southern STAT demands rise.`
+          : 'Pre-stage TN-01-CRYO-101 at TNMSC Central Warehouse Nandanam following Kilpauk drop-off to absorb upcoming surgical biopsy batches.',
       modelUsed: 'gemini-4-argon (ThinkingLevel.HIGH)',
       generatedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       quotaNotice,
@@ -224,11 +224,11 @@ app.post('/api/ai/analyze-routes', async (req, res) => {
     return res.json(buildFallbackAdvisory());
   }
 
-  const prompt = `You are a Principal Medical Logistics & Cold-Chain Routing Strategist analyzing an active San Francisco hospital courier fleet.
+  const prompt = `You are a Principal Medical Logistics & Cold-Chain Routing Strategist analyzing an active Tamil Nadu (India) hospital courier and pharmaceutical delivery fleet.
 Vehicles: ${JSON.stringify(vehiclesTable)}
 Active Delivery Tasks: ${JSON.stringify(deliveryTasksTable)}
 Optimized Clusters: ${JSON.stringify(activeRouteClusters)}
-Dispatcher Complex Query: ${customQuery || 'Perform a deep cold-chain excursion risk audit, STAT time-window bottleneck analysis, and fleet rebalancing strategy.'}
+Dispatcher Complex Query: ${customQuery || 'Perform a deep cold-chain excursion risk audit, STAT tablet/ointment time-window bottleneck analysis, and fleet rebalancing strategy across Tamil Nadu.'}
 
 Provide a concise, rigorous JSON analysis with:
 - executiveSummary (2-3 sentences with exact quantitative metrics)

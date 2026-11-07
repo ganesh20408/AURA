@@ -32,17 +32,17 @@ const CAMERA_PRESETS: Record<
   overview: {
     pos: [0, 34, 46],
     look: [0, 1.5, 0],
-    label: 'Isometric Table Overview',
+    label: 'Isometric Overview',
   },
   cryoCorridor: {
     pos: [24, 15, 22],
     look: [8, 2.5, -2],
-    label: 'Mission Bay Cryo Corridor',
+    label: 'Chennai Central & Adyar Hub',
   },
   parnassusHub: {
     pos: [-26, 16, 20],
     look: [-10, 2.5, 2],
-    label: 'Parnassus & Geary Hub',
+    label: 'Coimbatore & Madurai Corridor',
   },
   topDown: {
     pos: [0, 56, 4],

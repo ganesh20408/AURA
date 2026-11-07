@@ -9,7 +9,14 @@ import {
 } from './types/logistics';
 import { DispatcherMap } from './components/DispatcherMap';
 import { SheetsIngestModal } from './components/SheetsIngestModal';
-import { StrategyRoom3D } from './components/StrategyRoom3D';
+import {
+  LocationAutocompleteInput,
+  SelectedLocationData,
+} from './components/LocationAutocompleteInput';
+
+const StrategyRoom3D = React.lazy(() =>
+  import('./components/StrategyRoom3D').then((mod) => ({ default: mod.StrategyRoom3D }))
+);
 import {
   FileSpreadsheet,
   Search,
@@ -68,11 +75,17 @@ export default function App() {
 
   // New Task Form State
   const [newFacility, setNewFacility] = useState<string>('');
+  const [newAddress, setNewAddress] = useState<string>('');
+  const [newLat, setNewLat] = useState<number | null>(null);
+  const [newLng, setNewLng] = useState<number | null>(null);
   const [newSpecimen, setNewSpecimen] = useState<string>('');
   const [newTemp, setNewTemp] = useState<TemperatureCapacity>('Frozen');
   const [newPriority, setNewPriority] = useState<TaskPriority>('STAT');
   const [newDeadline, setNewDeadline] = useState<string>('10:15');
   const [formError, setFormError] = useState<string | null>(null);
+
+  // Active Real-Time User GPS / Input Location
+  const [userLocation, setUserLocation] = useState<SelectedLocationData | null>(null);
 
   // Load initial state from SQL-backed server API
   const fetchState = async () => {
@@ -100,6 +113,43 @@ export default function App() {
     const params = new URLSearchParams(window.location.search);
     if (params.get('view') === '3d') {
       setActiveTab('strategy3d');
+    }
+
+    // Automatically detect and respond to user's real-time GPS location area
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        async (pos) => {
+          const { latitude, longitude } = pos.coords;
+          let placeName = `My Location (${latitude.toFixed(4)}, ${longitude.toFixed(4)})`;
+          let fullAddress = 'User GPS Location Area';
+          try {
+            const revRes = await fetch(
+              `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`
+            );
+            if (revRes.ok) {
+              const data = await revRes.json();
+              if (data && data.display_name) {
+                const parts = data.display_name.split(',');
+                placeName = parts.slice(0, 2).join(',').trim();
+                fullAddress = data.display_name;
+              }
+            }
+          } catch {
+            // fallback gracefully
+          }
+          setUserLocation({
+            name: placeName,
+            address: fullAddress,
+            lat: latitude,
+            lng: longitude,
+            isRealTimeGPS: true,
+          });
+        },
+        () => {
+          // Geolocation permission ignored or denied
+        },
+        { enableHighAccuracy: true, timeout: 8000 }
+      );
     }
   }, []);
 
@@ -182,17 +232,22 @@ export default function App() {
     }
     setFormError(null);
     try {
+      const taskLat = newLat ?? (13.0827 + (Math.random() - 0.5) * 0.05);
+      const taskLng = newLng ?? (80.2707 + (Math.random() - 0.5) * 0.05);
+      const taskAddress = newAddress.trim() || `${newFacility.trim()}, Tamil Nadu, India`;
+
       const res = await fetch('/api/tasks', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           facilityName: newFacility.trim(),
+          address: taskAddress,
           specimenType: newSpecimen.trim(),
           requiredTemp: newTemp,
           priority: newPriority,
           deadlineTime: newDeadline.trim(),
-          lat: 37.768 + (Math.random() - 0.5) * 0.03,
-          lng: -122.425 + (Math.random() - 0.5) * 0.04,
+          lat: taskLat,
+          lng: taskLng,
         }),
       });
       if (!res.ok) {
@@ -203,6 +258,9 @@ export default function App() {
       const data = await res.json();
       setTasks(data.tasks || []);
       setNewFacility('');
+      setNewAddress('');
+      setNewLat(null);
+      setNewLng(null);
       setNewSpecimen('');
       setIsAddTaskModalOpen(false);
       setBannerNotice(`Added new ${newPriority} ${newTemp} task (${data.task.orderId}).`);
@@ -372,7 +430,7 @@ export default function App() {
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <h1 className="text-base font-bold text-slate-900 tracking-tight">
-                    Medical Specimen Dispatch Queue
+                    Medical & Pharmaceutical Dispatch Queue
                   </h1>
                   <div className="flex items-center gap-2 text-xs text-slate-500 mt-0.5 font-mono tabular-nums">
                     <span>{tasks.length} Total Tasks</span>
@@ -697,6 +755,15 @@ export default function App() {
               selectedTempFilter={tempFilter}
               selectedTaskOrderId={selectedTaskOrderId}
               onSelectTask={setSelectedTaskOrderId}
+              userLocation={userLocation}
+              onSetUserLocation={setUserLocation}
+              onRequestCreateTaskAtLocation={(loc) => {
+                setNewFacility(loc.name);
+                setNewAddress(loc.address || `${loc.name}, San Francisco, CA`);
+                setNewLat(loc.lat);
+                setNewLng(loc.lng);
+                setIsAddTaskModalOpen(true);
+              }}
             />
           </section>
         </main>
@@ -705,12 +772,20 @@ export default function App() {
       {/* VIEW 2: 3D STRATEGY ROOM (Three.js Digital Twin City Grid) */}
       {activeTab === 'strategy3d' && (
         <main className="flex-1 overflow-hidden">
-          <StrategyRoom3D
-            vehicles={vehicles}
-            tasks={tasks}
-            clusters={clusters}
-            onTriggerOptimize={handleOptimizeRoutes}
-          />
+          <React.Suspense
+            fallback={
+              <div className="w-full h-full flex items-center justify-center bg-slate-950 text-slate-400 text-xs">
+                Loading 3D Digital Twin City Grid...
+              </div>
+            }
+          >
+            <StrategyRoom3D
+              vehicles={vehicles}
+              tasks={tasks}
+              clusters={clusters}
+              onTriggerOptimize={handleOptimizeRoutes}
+            />
+          </React.Suspense>
         </main>
       )}
 
@@ -1011,9 +1086,16 @@ export default function App() {
               </h2>
               <button
                 type="button"
-                onClick={() => setIsAddTaskModalOpen(false)}
+                onClick={() => {
+                  setIsAddTaskModalOpen(false);
+                  setNewFacility('');
+                  setNewAddress('');
+                  setNewLat(null);
+                  setNewLng(null);
+                  setFormError(null);
+                }}
                 aria-label="Close New Order Modal"
-                className="p-1 text-slate-400 hover:text-slate-800 rounded"
+                className="p-1 text-slate-400 hover:text-slate-800 rounded cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -1027,20 +1109,53 @@ export default function App() {
               )}
 
               <div>
-                <label
-                  htmlFor="facility-name-input"
-                  className="block font-semibold text-slate-700 mb-1"
-                >
-                  Destination Hospital / Lab Facility
-                </label>
-                <input
+                <div className="flex items-center justify-between mb-1">
+                  <label
+                    htmlFor="facility-name-input"
+                    className="block font-semibold text-slate-700"
+                  >
+                    Destination Facility / Address / Location
+                  </label>
+                  <span className="text-[10px] text-slate-400">
+                    Known list or type custom
+                  </span>
+                </div>
+                <LocationAutocompleteInput
                   id="facility-name-input"
-                  type="text"
                   value={newFacility}
-                  onChange={(e) => setNewFacility(e.target.value)}
-                  placeholder="e.g., UCSF Mount Zion Pathology Lab"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-slate-900"
+                  onChange={(val) => {
+                    setNewFacility(val);
+                    if (!val) {
+                      setNewAddress('');
+                      setNewLat(null);
+                      setNewLng(null);
+                    }
+                  }}
+                  onSelectLocation={(loc) => {
+                    setNewFacility(loc.name);
+                    setNewAddress(loc.address);
+                    setNewLat(loc.lat);
+                    setNewLng(loc.lng);
+                  }}
+                  placeholder="e.g., Apollo Greams Road, RGGGH Chennai, KMCH Coimbatore..."
+                  extraKnownLocations={tasks.map((t) => ({
+                    name: t.facilityName,
+                    address: t.address,
+                    lat: t.lat,
+                    lng: t.lng,
+                  }))}
+                  showGPSButton={true}
                 />
+                {newAddress && (
+                  <div className="mt-1.5 text-[11px] text-slate-600 bg-slate-50 border border-slate-200 rounded px-2.5 py-1 flex items-center justify-between">
+                    <span className="truncate">📍 {newAddress}</span>
+                    {newLat !== null && newLng !== null && (
+                      <span className="font-mono text-slate-400 text-[10px] shrink-0 ml-2">
+                        {newLat.toFixed(4)}°N, {Math.abs(newLng).toFixed(4)}°E
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div>
@@ -1048,14 +1163,14 @@ export default function App() {
                   htmlFor="specimen-type-input"
                   className="block font-semibold text-slate-700 mb-1"
                 >
-                  Specimen Payload Description
+                  Medicine / Specimen Payload Description
                 </label>
                 <input
                   id="specimen-type-input"
                   type="text"
                   value={newSpecimen}
                   onChange={(e) => setNewSpecimen(e.target.value)}
-                  placeholder="e.g., Cryopreserved Stem Cell Aliquot (-80°C)"
+                  placeholder="e.g., Paracetamol Tablets 500mg, Betamethasone Ointment, Insulin..."
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg text-slate-900"
                 />
               </div>
@@ -1119,8 +1234,15 @@ export default function App() {
               <div className="flex items-center justify-end gap-2 pt-2">
                 <button
                   type="button"
-                  onClick={() => setIsAddTaskModalOpen(false)}
-                  className="px-3.5 py-2 text-slate-600 hover:text-slate-900 font-medium"
+                  onClick={() => {
+                    setIsAddTaskModalOpen(false);
+                    setNewFacility('');
+                    setNewAddress('');
+                    setNewLat(null);
+                    setNewLng(null);
+                    setFormError(null);
+                  }}
+                  className="px-3.5 py-2 text-slate-600 hover:text-slate-900 font-medium cursor-pointer"
                 >
                   Cancel
                 </button>
