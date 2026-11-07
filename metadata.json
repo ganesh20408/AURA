@@ -1,0 +1,6 @@
+{
+  "name": "DynaRoute Medical Courier Logistics",
+  "description": "B2B SaaS medical specimen courier routing and cold-chain dispatch platform with Hybrid Neural-Heuristic route optimization, Google Maps & Sheets integration, and a 3D Strategy Room digital twin.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
