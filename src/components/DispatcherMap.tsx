@@ -47,6 +47,7 @@ interface DispatcherMapProps {
   userLocation?: SelectedLocationData | null;
   onSetUserLocation?: (location: SelectedLocationData) => void;
   onRequestCreateTaskAtLocation?: (location: SelectedLocationData) => void;
+  onStartNavigation?: (task: DeliveryTask) => void;
 }
 
 const TN_CENTER = { lat: 13.0827, lng: 80.2707 };
@@ -188,6 +189,7 @@ export const DispatcherMap: React.FC<DispatcherMapProps> = ({
   userLocation = null,
   onSetUserLocation,
   onRequestCreateTaskAtLocation,
+  onStartNavigation,
 }) => {
   // Read stored or env Google Maps API Key
   const envKey = (import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined) || '';
@@ -634,6 +636,7 @@ export const DispatcherMap: React.FC<DispatcherMapProps> = ({
               onSelectTask={onSelectTask}
               userLocation={userLocation}
               onRequestCreateTaskAtLocation={onRequestCreateTaskAtLocation}
+              onStartNavigation={onStartNavigation}
             />
           </React.Suspense>
         )}
@@ -1005,13 +1008,39 @@ export const DispatcherMap: React.FC<DispatcherMapProps> = ({
               </button>
             </div>
 
-            <p className="text-xs text-slate-400 leading-relaxed">
-              Enter your Google Maps Platform JavaScript API Key. Your key is stored locally in your browser session (<code className="font-mono text-sky-400">localStorage</code>) and enables 3D maps and Google Routes Directions.
-            </p>
+            <div className="space-y-2 text-xs text-slate-300 leading-relaxed">
+              <p>
+                Google Maps API keys are personal cryptographic tokens linked to your Google Cloud account (<code className="font-mono text-sky-400">AIzaSy...</code>).
+              </p>
+              <div className="p-3 rounded-lg bg-slate-800/80 border border-slate-700 text-slate-300 space-y-1.5">
+                <div className="font-semibold text-white flex items-center gap-1.5">
+                  <span className="text-emerald-400 font-bold">100% Free Option (Zero Key Required):</span>
+                </div>
+                <p className="text-[11px] text-slate-400">
+                  You do not need a Google Maps key to use this app. You can click below to switch to the built-in <b>Interactive Map (Free)</b> powered by OpenStreetMap / CARTO with live vehicle tracking and GPS radar.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMapMode('interactive');
+                    setIsKeyModalOpen(false);
+                  }}
+                  className="w-full mt-1 px-3 py-1.5 text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white rounded-md transition-colors cursor-pointer"
+                >
+                  ✓ Switch to Free Interactive Map (No Key Needed)
+                </button>
+              </div>
+
+              <div className="pt-1">
+                <span className="text-[11px] text-slate-400">
+                  <b>Want to use Google Maps SDK?</b> Google gives <b>$200 monthly free credit</b> (~28,000 free loads/mo) to every account. Generate your free key in <a href="https://console.cloud.google.com/google/maps-apis/credentials" target="_blank" rel="noreferrer" className="text-sky-400 underline hover:text-white">Google Cloud Console</a> and paste it below:
+                </span>
+              </div>
+            </div>
 
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1">
-                API Key
+                Your Google Maps API Key
               </label>
               <input
                 type="text"

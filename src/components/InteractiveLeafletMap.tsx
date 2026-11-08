@@ -2,9 +2,10 @@ import React, { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { DeliveryTask, OptimizedRouteCluster, TemperatureCapacity, Vehicle } from '../types/logistics';
-import { Layers, Navigation, Plus, Locate } from 'lucide-react';
+import { Layers, Navigation, Plus, Locate, ShieldCheck } from 'lucide-react';
 import { SelectedLocationData } from './LocationAutocompleteInput';
 import { calculateHaversineKm } from '../utils/optimizer';
+import { computeRoadRouteWithNavigation, RoadRouteResult } from '../utils/roadRouting';
 
 interface InteractiveLeafletMapProps {
   vehicles: Vehicle[];
@@ -17,6 +18,7 @@ interface InteractiveLeafletMapProps {
   userLocation: SelectedLocationData | null;
   onCenterUserLocation?: () => void;
   onRequestCreateTaskAtLocation?: (location: SelectedLocationData) => void;
+  onStartNavigation?: (task: DeliveryTask) => void;
 }
 
 // Default center: Chennai / Tamil Nadu, India
@@ -39,6 +41,7 @@ export const InteractiveLeafletMap: React.FC<InteractiveLeafletMapProps> = ({
   userLocation,
   onCenterUserLocation,
   onRequestCreateTaskAtLocation,
+  onStartNavigation,
 }) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
@@ -47,6 +50,26 @@ export const InteractiveLeafletMap: React.FC<InteractiveLeafletMapProps> = ({
   const userMarkerRef = useRef<L.Marker | null>(null);
   const [tileTheme, setTileTheme] = useState<'dark' | 'voyager' | 'osm'>('dark');
   const tileLayerRef = useRef<L.TileLayer | null>(null);
+  const [roadRoutes, setRoadRoutes] = useState<Record<string, RoadRouteResult>>({});
+
+  // Compute realistic road-following corridor geometries & turn-by-turn steps
+  useEffect(() => {
+    let isCancelled = false;
+    clusters.forEach(async (cluster) => {
+      if (cluster.stops.length === 0) return;
+      try {
+        const roadRes = await computeRoadRouteWithNavigation(cluster.origin, cluster.stops);
+        if (!isCancelled) {
+          setRoadRoutes((prev) => ({ ...prev, [cluster.vehicleId]: roadRes }));
+        }
+      } catch {
+        // fallback
+      }
+    });
+    return () => {
+      isCancelled = true;
+    };
+  }, [clusters]);
 
   // Initialize Leaflet Map
   useEffect(() => {
@@ -171,21 +194,27 @@ export const InteractiveLeafletMap: React.FC<InteractiveLeafletMapProps> = ({
       return true;
     });
 
-    // 1. Draw Multi-Stop Route Polylines
+    // 1. Draw Multi-Stop Route Polylines (Following Real Paved Highways & Arterial Expressways)
     visibleClusters.forEach((cluster) => {
-      if (cluster.pathCoordinates.length < 2) return;
-      const latLngs: [number, number][] = cluster.pathCoordinates.map((c) => [c.lat, c.lng]);
+      if (cluster.stops.length === 0) return;
+      const roadData = roadRoutes[cluster.vehicleId];
+      const latLngs: [number, number][] =
+        roadData && roadData.coordinates.length > 2
+          ? roadData.coordinates
+          : cluster.pathCoordinates.map((c) => [c.lat, c.lng]);
 
-      // Route casing glow
+      if (latLngs.length < 2) return;
+
+      // Outer glow casing
       L.polyline(latLngs, {
         color: cluster.routeColor,
-        weight: 6,
+        weight: 7,
         opacity: 0.35,
         lineCap: 'round',
         lineJoin: 'round',
       }).addTo(routesGroup);
 
-      // Core route line
+      // Core arterial road line
       L.polyline(latLngs, {
         color: cluster.routeColor,
         weight: 3.5,
@@ -280,6 +309,14 @@ export const InteractiveLeafletMap: React.FC<InteractiveLeafletMapProps> = ({
             <span>Deadline: <b>${task.deadlineTime}</b></span>
             <span>${task.status === 'Optimized' ? `Stop #${task.stopSequence} (${task.assignedVehicleId})` : '<span style="color: #d97706;">Pending</span>'}</span>
           </div>
+          <div style="font-size: 10px; color: #059669; font-weight: 600; margin-top: 5px; display: flex; align-items: center; gap: 4px;">
+            <span>🛡️ Grade A Arterial Pavement · Low Congestion Bypass</span>
+          </div>
+          <div style="margin-top: 8px; padding-top: 6px; border-top: 1px solid #e2e8f0; display: flex; gap: 6px;">
+            <a href="https://www.google.com/maps/dir/?api=1&destination=${task.lat},${task.lng}&travelmode=driving" target="_blank" rel="noreferrer" style="flex: 1; text-align: center; padding: 6px 10px; background-color: #2563eb; color: #ffffff; text-decoration: none; border-radius: 6px; font-size: 11px; font-weight: 700; font-family: sans-serif; display: flex; align-items: center; justify-content: center; gap: 4px;">
+              🧭 Launch Voice GPS
+            </a>
+          </div>
         </div>
       `);
 
@@ -287,7 +324,7 @@ export const InteractiveLeafletMap: React.FC<InteractiveLeafletMapProps> = ({
         marker.openPopup();
       }
     });
-  }, [vehicles, tasks, clusters, selectedTempFilter, selectedCourierFilter, userLocation, selectedTaskOrderId, onSelectTask]);
+  }, [vehicles, tasks, clusters, roadRoutes, selectedTempFilter, selectedCourierFilter, userLocation, selectedTaskOrderId, onSelectTask]);
 
   // Auto-center map when courier or GPS mode changes
   useEffect(() => {

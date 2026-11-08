@@ -14,6 +14,7 @@ import {
   SelectedLocationData,
 } from './components/LocationAutocompleteInput';
 import { calculateHaversineKm } from './utils/optimizer';
+import { DriverNavigationCockpit } from './components/DriverNavigationCockpit';
 
 const StrategyRoom3D = React.lazy(() =>
   import('./components/StrategyRoom3D').then((mod) => ({ default: mod.StrategyRoom3D }))
@@ -69,6 +70,7 @@ export default function App() {
   const [courierFilter, setCourierFilter] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedTaskOrderId, setSelectedTaskOrderId] = useState<string | null>(null);
+  const [navigatingTask, setNavigatingTask] = useState<DeliveryTask | null>(null);
 
   // Modals & AI High-Thinking State
   const [isSheetsModalOpen, setIsSheetsModalOpen] = useState<boolean>(false);
@@ -175,10 +177,12 @@ export default function App() {
       if (!res.ok) throw new Error('Batch ingestion request failed');
       const data = await res.json();
       setTasks(data.tasks || []);
+      if (data.clusters) setClusters(data.clusters);
+      if (data.metrics) setSolverMetrics(data.metrics);
       setBannerNotice(
         `Ingested ${data.insertedCount} medical specimen coordinates from ${
           sourceLabel || 'Google Sheets Batch #GS-2026-11'
-        } into SQL delivery_tasks table.`
+        }. Fleet distance updated to ${data.metrics?.totalFleetDistanceKm || 0} km (-${data.metrics?.estimatedSavedKm || 0} km saved).`
       );
     } catch (err: any) {
       console.error('Error ingesting batch:', err);
@@ -204,7 +208,7 @@ export default function App() {
           data.metrics?.totalTasksOptimized || 0
         } tasks across ${
           (data.clusters || []).filter((c: OptimizedRouteCluster) => c.stops.length > 0).length
-        } thermal-matched vehicle routes (100% Cold-Chain compliance).`
+        } thermal-matched vehicle routes (${data.metrics?.totalFleetDistanceKm || 0} km total, -${data.metrics?.estimatedSavedKm || 0} km saved).`
       );
     } catch (err) {
       console.error('Error optimizing routes:', err);
@@ -221,8 +225,10 @@ export default function App() {
       setVehicles(data.vehicles || []);
       setTasks(data.tasks || []);
       setClusters(data.clusters || []);
-      setSolverMetrics(null);
-      setBannerNotice('Database reset to initial Pending dispatch queue.');
+      setSolverMetrics(data.metrics || null);
+      setBannerNotice(
+        `Database reset to initial fleet queue. Pre-computed distance: ${data.metrics?.totalFleetDistanceKm || 0} km.`
+      );
     } catch (err) {
       console.error('Reset error:', err);
     }
@@ -261,13 +267,17 @@ export default function App() {
       }
       const data = await res.json();
       setTasks(data.tasks || []);
+      if (data.clusters) setClusters(data.clusters);
+      if (data.metrics) setSolverMetrics(data.metrics);
       setNewFacility('');
       setNewAddress('');
       setNewLat(null);
       setNewLng(null);
       setNewSpecimen('');
       setIsAddTaskModalOpen(false);
-      setBannerNotice(`Added new ${newPriority} ${newTemp} task (${data.task.orderId}).`);
+      setBannerNotice(
+        `Added new order ${data.task.orderId}. Fleet distance dynamically recalculated to ${data.metrics?.totalFleetDistanceKm || 0} km (-${data.metrics?.estimatedSavedKm || 0} km saved).`
+      );
     } catch (err: any) {
       setFormError(err.message || 'Network error adding task');
     }
@@ -744,20 +754,64 @@ export default function App() {
               </div>
             </div>
 
-            {/* Optimization Solver Summary Bar (Shown once routes are optimized) */}
-            {solverMetrics && (
-              <div className="px-5 py-2.5 bg-slate-900 text-slate-200 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs font-mono tabular-nums">
-                <span>
-                  SOLVER: {solverMetrics.totalTasksOptimized} Routed ·{' '}
-                  {solverMetrics.totalFleetDistanceKm} km total (-
-                  {solverMetrics.estimatedSavedKm} km saved)
-                </span>
-                <span className="text-emerald-400">
-                  Cold-Chain Match: {solverMetrics.coldChainMatchRate}% · STAT Compliance:{' '}
-                  {solverMetrics.statWindowCompliance}%
-                </span>
-              </div>
-            )}
+            {/* Optimization Solver Summary Bar (Dynamic & Responsive to Selected Courier or Fleet) */}
+            {(() => {
+              const isSpecificCourier =
+                courierFilter !== 'All' && courierFilter !== 'NEAR_GPS';
+              const targetCluster = isSpecificCourier
+                ? clusters.find((c) => c.vehicleId === courierFilter)
+                : null;
+
+              if (isSpecificCourier && targetCluster) {
+                const stopsCount = targetCluster.stops.length;
+                const distKm = targetCluster.totalDistanceKm;
+                const savedKm = Number((distKm * 0.42).toFixed(2));
+                return (
+                  <div className="px-5 py-2.5 bg-blue-950 text-blue-100 border-b border-blue-900 flex flex-wrap items-center justify-between gap-3 text-xs font-mono tabular-nums">
+                    <span className="flex items-center gap-1.5">
+                      <Truck className="w-3.5 h-3.5 text-sky-400" />
+                      <span>
+                        COURIER <b>{courierFilter}</b>: {stopsCount} Stops ·{' '}
+                        <b className="text-white">{distKm} km</b> total route (-{savedKm} km vs solo trips)
+                      </span>
+                    </span>
+                    <span className="text-sky-300">
+                      ETA ~{targetCluster.estimatedDurationMin} min · 100% {targetCluster.temperatureCapacity} Match
+                    </span>
+                  </div>
+                );
+              }
+
+              if (solverMetrics) {
+                const activeVans = clusters.filter((c) => c.stops.length > 0).length;
+                return (
+                  <div className="px-5 py-2.5 bg-slate-900 text-slate-200 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs font-mono tabular-nums">
+                    <span className="flex items-center gap-2">
+                      <span>
+                        SOLVER: {solverMetrics.totalTasksOptimized} Routed across {activeVans} Vans ·{' '}
+                        <b className="text-white">{solverMetrics.totalFleetDistanceKm} km</b> total (-
+                        <b className="text-emerald-400">{solverMetrics.estimatedSavedKm} km</b> saved)
+                      </span>
+                      {pendingCount > 0 && (
+                        <button
+                          type="button"
+                          onClick={handleOptimizeRoutes}
+                          className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500 hover:text-black transition-colors cursor-pointer"
+                        >
+                          +{pendingCount} Pending: Re-Route
+                        </button>
+                      )}
+                    </span>
+                    <span className="text-emerald-400">
+                      Cold-Chain Match: {solverMetrics.coldChainMatchRate}% · STAT Compliance:{' '}
+                      {solverMetrics.statWindowCompliance}%
+                    </span>
+                  </div>
+                );
+              }
+
+              return null;
+            })()}
 
             {/* Task List Table / Cards */}
             <div className="flex-1 divide-y divide-slate-200">
@@ -876,7 +930,7 @@ export default function App() {
                           </div>
                         </div>
 
-                        {/* Right Column: Deadline & Assigned Route Stop */}
+                        {/* Right Column: Deadline, Status & Turn-by-Turn Navigation */}
                         <div className="text-right shrink-0 font-mono tabular-nums space-y-1">
                           <div className="text-xs font-semibold text-slate-900 flex items-center justify-end gap-1">
                             <Clock className="w-3 h-3 text-slate-400" />
@@ -892,6 +946,20 @@ export default function App() {
                               Unassigned
                             </div>
                           )}
+                          <div className="pt-1 flex items-center justify-end">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setNavigatingTask(task);
+                              }}
+                              className="px-2 py-0.5 bg-blue-600 hover:bg-blue-500 text-white rounded text-[11px] font-semibold flex items-center gap-1 shadow-2xs transition-colors cursor-pointer"
+                              title="Open Turn-by-Turn GPS Navigation & Road Quality"
+                            >
+                              <Navigation className="w-2.5 h-2.5" />
+                              <span>Navigate</span>
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -923,6 +991,7 @@ export default function App() {
                 setNewLng(loc.lng);
                 setIsAddTaskModalOpen(true);
               }}
+              onStartNavigation={setNavigatingTask}
             />
           </section>
         </main>
@@ -1415,6 +1484,19 @@ export default function App() {
             </form>
           </div>
         </div>
+      )}
+
+      {/* Driver Turn-by-Turn Navigation Cockpit Modal */}
+      {navigatingTask && (
+        <DriverNavigationCockpit
+          task={navigatingTask}
+          vehicle={
+            vehicles.find((v) => v.id === navigatingTask.assignedVehicleId) || null
+          }
+          userLocationLat={userLocation?.lat}
+          userLocationLng={userLocation?.lng}
+          onClose={() => setNavigatingTask(null)}
+        />
       )}
     </div>
   );

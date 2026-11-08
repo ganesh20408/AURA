@@ -24,7 +24,11 @@ app.use(express.json());
 // Relational SQL-aligned state store for Vehicles and Delivery Tasks
 let vehiclesTable: Vehicle[] = structuredClone(INITIAL_VEHICLES);
 let deliveryTasksTable: DeliveryTask[] = structuredClone(INITIAL_DELIVERY_TASKS);
-let activeRouteClusters: OptimizedRouteCluster[] = [];
+
+// Pre-compute initial optimization so total distance and saved distance are available on initial load
+const initialOpt = runHybridRouteOptimization(vehiclesTable, deliveryTasksTable);
+deliveryTasksTable = initialOpt.tasks;
+let activeRouteClusters: OptimizedRouteCluster[] = initialOpt.clusters;
 let lastOptimizationMetrics: {
   totalTasksOptimized: number;
   statTasksCount: number;
@@ -33,7 +37,7 @@ let lastOptimizationMetrics: {
   coldChainMatchRate: number;
   statWindowCompliance: number;
   solverRuntimeMs: number;
-} | null = null;
+} | null = initialOpt.metrics;
 let batchIngestCounter = 0;
 
 // Initialize Gemini API client on the server with mandatory User-Agent header
@@ -100,10 +104,18 @@ app.post('/api/tasks/ingest-batch', (req, res) => {
       }
     }
 
+    // Automatically recompute route optimization & distance so total distance and saved distance reflect new batch immediately
+    const batchOpt = runHybridRouteOptimization(vehiclesTable, deliveryTasksTable);
+    deliveryTasksTable = batchOpt.tasks;
+    activeRouteClusters = batchOpt.clusters;
+    lastOptimizationMetrics = batchOpt.metrics;
+
     res.json({
       insertedCount: newlyInserted.length,
       insertedTasks: newlyInserted,
       tasks: deliveryTasksTable,
+      clusters: activeRouteClusters,
+      metrics: lastOptimizationMetrics,
     });
   } catch (err: any) {
     console.error('Batch ingestion error:', err);
@@ -148,7 +160,19 @@ app.post('/api/tasks', (req, res) => {
     };
 
     deliveryTasksTable.unshift(newOrder);
-    res.status(201).json({ task: newOrder, tasks: deliveryTasksTable });
+
+    // Automatically recompute route optimization & distance so total distance immediately reflects the new stop
+    const taskOpt = runHybridRouteOptimization(vehiclesTable, deliveryTasksTable);
+    deliveryTasksTable = taskOpt.tasks;
+    activeRouteClusters = taskOpt.clusters;
+    lastOptimizationMetrics = taskOpt.metrics;
+
+    res.status(201).json({
+      task: newOrder,
+      tasks: deliveryTasksTable,
+      clusters: activeRouteClusters,
+      metrics: lastOptimizationMetrics,
+    });
   } catch (err: any) {
     res.status(500).json({ error: err.message || 'Failed to create task' });
   }
@@ -173,19 +197,21 @@ app.post('/api/routes/optimize', (_req, res) => {
   }
 });
 
-// POST /api/reset - Resets database tables to initial Pending state
+// POST /api/reset - Resets database tables to initial state with pre-computed optimization
 app.post('/api/reset', (_req, res) => {
   vehiclesTable = structuredClone(INITIAL_VEHICLES);
   deliveryTasksTable = structuredClone(INITIAL_DELIVERY_TASKS);
-  activeRouteClusters = [];
-  lastOptimizationMetrics = null;
+  const resetOpt = runHybridRouteOptimization(vehiclesTable, deliveryTasksTable);
+  deliveryTasksTable = resetOpt.tasks;
+  activeRouteClusters = resetOpt.clusters;
+  lastOptimizationMetrics = resetOpt.metrics;
   batchIngestCounter = 0;
 
   res.json({
     vehicles: vehiclesTable,
     tasks: deliveryTasksTable,
     clusters: activeRouteClusters,
-    metrics: null,
+    metrics: lastOptimizationMetrics,
   });
 });
 
@@ -201,8 +227,8 @@ app.post('/api/ai/analyze-routes', async (req, res) => {
     return {
       executiveSummary: `Evaluated ${deliveryTasksTable.length} medical, tablet, ointment, and cold-chain orders (${statCount} STAT priority, ${frozenCount} Ultra-Low Frozen -80°C, ${reefCount} Refrigerated 2–8°C) across ${vehiclesTable.length} specialized Tamil Nadu courier units. Strict thermal custody maintained across Chennai, Coimbatore, and Madurai healthcare corridors.`,
       coldChainRiskAnalysis: [
-        `TN-01-CRYO-101 (LN2 Cryo Van): Transports ${frozenCount} ultra-low -80°C specimens & cryo-stem cells. Door-open custody transfer time at Adyar Cancer Institute limited to < 45 seconds to preserve liquid vapor stability.`,
-        `TN-02-REEF-204 (Dual-Zone Reefer): Delivers ${reefCount} refrigerated insulin, anti-rabies immunoglobulins, and packed RBCs (2°C–8°C). Secondary cooling buffers pre-chilled for Anna Salai & Poonamallee corridors.`,
+        `TN-01-CRYO-101 & TN-05-CRYO-MDU (LN2 Cryo Vans): Transport ${frozenCount} ultra-low -80°C specimens, tissue biopsies, and cryo-cells across Chennai and Southern TN. Door-open custody transfer limited to < 45 seconds to preserve liquid vapor stability.`,
+        `TN-02-REEF-204 & TN-04-REEF-CBE (Active Reefers): Deliver ${reefCount} refrigerated vaccines, anti-rabies immunoglobulins, and insulin across Chennai & Western TN (Coimbatore) with 2°C–8°C secondary cooling buffers.`,
         `TN-03-AMB-309 (Controlled Ambient Sedan): Dispatches ${deliveryTasksTable.length - frozenCount - reefCount} controlled ambient tablet strips, topical antibiotic ointments, and burn creams with zero thermal excursion exposure.`,
       ],
       statBottleneckMitigations: [
